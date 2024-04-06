@@ -132,25 +132,29 @@ def get_disk_info():
 
     # Define icon height
     icon_height = 22
-    icon_width = int(icon_height * 1.5)
+    padding = 10
 
     # Load íconos
     disk_icon = Image.open(f'{path}/disk.png')
     disk_chart = Image.open(f'{path}/disk_chart.png')
 
     # Resize icons
-    scaled_disk_icon = disk_icon.resize((icon_width, icon_height), Image.LANCZOS)
+    disk_icon_relation = disk_icon.width / disk_icon.height
+    disk_icon_width = int(icon_height * disk_icon_relation)
+    scaled_disk_icon = disk_icon.resize((disk_icon_width, icon_height), Image.LANCZOS)
 
     # Resize chart
-    scaled_disk_chart = disk_chart.resize((icon_width, icon_height), Image.LANCZOS)
+    chart_icon_relation = disk_chart.width / disk_chart.height
+    chart_icon_width = int(icon_height * chart_icon_relation)
+    scaled_disk_chart = disk_chart.resize((chart_icon_width, icon_height), Image.LANCZOS)
 
     # New image with the combined icons
     total_width = scaled_disk_icon.width + scaled_disk_chart.width
-    combined_image = Image.new('RGBA', (total_width, icon_height), (0, 0, 0, 0))  # Fondo transparente
+    combined_image = Image.new('RGBA', (total_width, icon_height+padding), (0, 0, 0, 0))  # Fondo transparente
 
     # Combine icons
-    combined_image.paste(scaled_disk_icon, (0, 0))
-    combined_image.paste(scaled_disk_chart, (scaled_disk_icon.width, 0), scaled_disk_chart)
+    combined_image.paste(scaled_disk_icon, (0, int(padding/2)), scaled_disk_icon)
+    combined_image.paste(scaled_disk_chart, (scaled_disk_icon.width, int(padding/2)), scaled_disk_chart)
 
     # Save combined image
     combined_image.save(f'{path}/disk_info.png')
