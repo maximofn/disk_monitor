@@ -5,9 +5,10 @@ gi.require_version('AppIndicator3', '0.1')
 from gi.repository import AppIndicator3, GLib
 from gi.repository import Gtk as gtk
 import os
-import subprocess
 import webbrowser
 import shutil
+import matplotlib.pyplot as plt
+from PIL import Image
 
 APPINDICATOR_ID = 'GPU_monitor'
 
@@ -65,10 +66,15 @@ def build_menu():
     return menu
 
 def update_disk_info(indicator):
-    disk_info = get_disk_info()
+    _ = get_disk_info()
 
-    info = f"Free:{disk_info['free']:.2f}GB/Used:{disk_info['used']:.2f}GB/Total:{disk_info['total']:.2f}GB"
-    indicator.set_label(info, "Indicator")
+    # info = f"Free:{disk_info['free']:.2f}GB/Used:{disk_info['used']:.2f}GB/Total:{disk_info['total']:.2f}GB"
+    # indicator.set_label(info, "Indicator")
+    
+    # Show pie chart
+    path = os.path.dirname(os.path.realpath(__file__))
+    icon_path = os.path.abspath(f"{path}/disk_info.png")
+    indicator.set_icon_full(icon_path, "RAM Usage")
 
     return True
 
@@ -81,8 +87,79 @@ def get_disk_info():
     free_gb = free / 1024**3
     used_gb = used / 1024**3
 
+    blue_color = '#66b3ff'
+    red_color = '#ff6666'
+    green_color = '#99ff99'
+    orange_color = '#ffcc99'
+    yellow_color = '#ffdb4d'
+    percentage_warning1 = 70
+    percentage_warning2 = 80
+    percentage_caution = 90
+
+    # Create pie chart
+    labels = 'Used', 'Free'
+    sizes = [used_gb / total_gb * 100, free_gb / total_gb * 100]  # Percentage of used and free memory
+    percentage_of_use = sizes[0]
+
+    if percentage_of_use < percentage_warning1:
+        used_color = green_color
+    elif percentage_of_use >= percentage_warning1 and percentage_of_use < percentage_warning2:
+        used_color = yellow_color
+    elif percentage_of_use >= percentage_warning2 and percentage_of_use < percentage_caution:
+        used_color = orange_color
+    else:
+        used_color = red_color
+    total_color = blue_color
+    colors = [used_color, total_color]
+    explode = (0.1, 0)  # Explode used memory
+
+    fig, ax = plt.subplots()
+    ax.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%',
+           startangle=90, pctdistance=0.85, counterclock=False, wedgeprops=dict(width=0.3, edgecolor='w'))
+
+    # Draw a circle at the center of pie to make it look like a donut
+    centre_circle = plt.Circle((0,0),0.70,fc='none', edgecolor='none')
+    fig = plt.gcf()
+    fig.gca().add_artist(centre_circle)
+
+    ax.axis('equal')  # Mantain the aspect ratio
+    plt.tight_layout()
+
+    # Save pie chart
+    path = os.path.dirname(os.path.realpath(__file__))
+    plt.savefig(f'{path}/disk_chart.png', transparent=True)
+    plt.close(fig)
+
+    # Define icon height
+    icon_height = 22
+    icon_width = int(icon_height * 1.5)
+
+    # Load íconos
+    disk_icon = Image.open(f'{path}/disk.png')
+    disk_chart = Image.open(f'{path}/disk_chart.png')
+
+    # Resize icons
+    scaled_disk_icon = disk_icon.resize((icon_width, icon_height), Image.LANCZOS)
+
+    # Resize chart
+    scaled_disk_chart = disk_chart.resize((icon_width, icon_height), Image.LANCZOS)
+
+    # New image with the combined icons
+    total_width = scaled_disk_icon.width + scaled_disk_chart.width
+    combined_image = Image.new('RGBA', (total_width, icon_height), (0, 0, 0, 0))  # Fondo transparente
+
+    # Combine icons
+    combined_image.paste(scaled_disk_icon, (0, 0))
+    combined_image.paste(scaled_disk_chart, (scaled_disk_icon.width, 0), scaled_disk_chart)
+
+    # Save combined image
+    combined_image.save(f'{path}/disk_info.png')
+
     return {"total": total_gb, "free": free_gb, "used": used_gb}
 
 if __name__ == "__main__":
+    path = os.path.dirname(os.path.realpath(__file__))
+    if os.path.exists(f'{path}/disk_info.png'):
+        os.remove(f'{path}/disk_info.png')
     signal.signal(signal.SIGINT, signal.SIG_DFL) # Allow the program to be terminated with Ctrl+C
     main()
