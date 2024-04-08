@@ -20,6 +20,10 @@ ICON_PATH = os.path.abspath(f"{PATH}/disk.png")
 image_to_show = None
 old_image_to_show = None
 
+memory_free = None
+memory_used = None
+memory_total = None
+
 def main():
     Disk_indicator = AppIndicator3.Indicator.new(APPINDICATOR_ID, ICON_PATH, AppIndicator3.IndicatorCategory.SYSTEM_SERVICES)
     Disk_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
@@ -37,6 +41,10 @@ def buy_me_a_coffe(_):
     webbrowser.open('https://www.buymeacoffee.com/maximofn')
 
 def build_menu():
+    global memory_free
+    global memory_used
+    global memory_total
+
     menu = gtk.Menu()
 
     memory_info = get_disk_info()
@@ -69,14 +77,20 @@ def build_menu():
     menu.append(item_quit)
 
     menu.show_all()
+    
     return menu
+
+def update_menu(memory):
+    memory_free.set_label(f"Free: {memory['free']:.2f} GB")
+    memory_used.set_label(f"Used: {memory['used']:.2f} GB")
+    memory_total.set_label(f"Total: {memory['total']:.2f} GB")
 
 def update_disk_info(indicator):
     global image_to_show
     global old_image_to_show
 
     # Generate disk info icon
-    get_disk_info()
+    memory = get_disk_info()
 
     # Show pie chart
     icon_path = os.path.abspath(f"{PATH}/{image_to_show}")
@@ -84,6 +98,9 @@ def update_disk_info(indicator):
     
     # Update old image path
     old_image_to_show = image_to_show
+
+    # Update menu
+    update_menu(memory)
 
     return True
 
