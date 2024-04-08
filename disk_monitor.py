@@ -9,13 +9,19 @@ import webbrowser
 import shutil
 import matplotlib.pyplot as plt
 from PIL import Image
+import time
+import re
 
 APPINDICATOR_ID = 'GPU_monitor'
 
+PATH = os.path.dirname(os.path.realpath(__file__))
+ICON_PATH = os.path.abspath(f"{PATH}/disk.png")
+
+image_to_show = None
+old_image_to_show = None
+
 def main():
-    path = os.path.dirname(os.path.realpath(__file__))
-    icon_path = os.path.abspath(f"{path}/disk.png")
-    Disk_indicator = AppIndicator3.Indicator.new(APPINDICATOR_ID, icon_path, AppIndicator3.IndicatorCategory.SYSTEM_SERVICES)
+    Disk_indicator = AppIndicator3.Indicator.new(APPINDICATOR_ID, ICON_PATH, AppIndicator3.IndicatorCategory.SYSTEM_SERVICES)
     Disk_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
     Disk_indicator.set_menu(build_menu())
 
@@ -66,19 +72,25 @@ def build_menu():
     return menu
 
 def update_disk_info(indicator):
-    _ = get_disk_info()
+    global image_to_show
+    global old_image_to_show
 
-    # info = f"Free:{disk_info['free']:.2f}GB/Used:{disk_info['used']:.2f}GB/Total:{disk_info['total']:.2f}GB"
-    # indicator.set_label(info, "Indicator")
-    
+    # Generate disk info icon
+    get_disk_info()
+
     # Show pie chart
-    path = os.path.dirname(os.path.realpath(__file__))
-    icon_path = os.path.abspath(f"{path}/disk_info.png")
-    indicator.set_icon_full(icon_path, "RAM Usage")
+    icon_path = os.path.abspath(f"{PATH}/{image_to_show}")
+    indicator.set_icon_full(icon_path, "disk usage")
+    
+    # Update old image path
+    old_image_to_show = image_to_show
 
     return True
 
 def get_disk_info():
+    global image_to_show
+    global old_image_to_show
+
     # Get disk usage
     total, used, free = shutil.disk_usage("/")
 
@@ -126,8 +138,7 @@ def get_disk_info():
     plt.tight_layout()
 
     # Save pie chart
-    path = os.path.dirname(os.path.realpath(__file__))
-    plt.savefig(f'{path}/disk_chart.png', transparent=True)
+    plt.savefig(f'{PATH}/disk_chart.png', transparent=True)
     plt.close(fig)
 
     # Define icon height
@@ -135,8 +146,8 @@ def get_disk_info():
     padding = 10
 
     # Load íconos
-    disk_icon = Image.open(f'{path}/disk.png')
-    disk_chart = Image.open(f'{path}/disk_chart.png')
+    disk_icon = Image.open(f'{PATH}/disk.png')
+    disk_chart = Image.open(f'{PATH}/disk_chart.png')
 
     # Resize icons
     disk_icon_relation = disk_icon.width / disk_icon.height
@@ -157,13 +168,24 @@ def get_disk_info():
     combined_image.paste(scaled_disk_chart, (scaled_disk_icon.width, int(padding/2)), scaled_disk_chart)
 
     # Save combined image
-    combined_image.save(f'{path}/disk_info.png')
+    timestamp = int(time.time())
+    image_to_show = f'disk_info_{timestamp}.png'
+    combined_image.save(f'{PATH}/{image_to_show}')
+
+    # Remove old image
+    if os.path.exists(f'{PATH}/{old_image_to_show}'):
+        os.remove(f'{PATH}/{old_image_to_show}')
 
     return {"total": total_gb, "free": free_gb, "used": used_gb}
 
 if __name__ == "__main__":
-    path = os.path.dirname(os.path.realpath(__file__))
-    if os.path.exists(f'{path}/disk_info.png'):
-        os.remove(f'{path}/disk_info.png')
+    if os.path.exists(f'{PATH}/disk_info.png'):
+        os.remove(f'{PATH}/disk_info.png')
+    
+    # Remove all ram_info_*.png files
+    for file in os.listdir(PATH):
+        if re.search(r'disk_info_\d+.png', file):
+            os.remove(f'{PATH}/{file}')
+
     signal.signal(signal.SIGINT, signal.SIG_DFL) # Allow the program to be terminated with Ctrl+C
     main()
