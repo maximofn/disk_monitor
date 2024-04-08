@@ -160,4 +160,4 @@ cython_debug/
 #.idea/
 
 disk_chart.png
-disk_info.png
+disk_info*.png
