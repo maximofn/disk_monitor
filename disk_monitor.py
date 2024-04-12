@@ -207,13 +207,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
     debug = args.debug
     
-    if os.path.exists(f'{PATH}/disk_info.png'):
-        os.remove(f'{PATH}/disk_info.png')
+    if not debug:
+        if os.path.exists(f'{PATH}/disk_info.png'):
+            os.remove(f'{PATH}/disk_info.png')
     
     # Remove all ram_info_*.png files
-    for file in os.listdir(PATH):
-        if re.search(r'disk_info_\d+.png', file):
-            os.remove(f'{PATH}/{file}')
+    if not debug:
+        for file in os.listdir(PATH):
+            if re.search(r'disk_info_\d+.png', file):
+                os.remove(f'{PATH}/{file}')
 
     signal.signal(signal.SIGINT, signal.SIG_DFL) # Allow the program to be terminated with Ctrl+C
     main(debug)
