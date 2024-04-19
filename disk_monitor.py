@@ -24,6 +24,7 @@ old_image_to_show = None
 memory_free = None
 memory_used = None
 memory_total = None
+actual_time = None
 
 def main(debug=False):
     Disk_indicator = AppIndicator3.Indicator.new(APPINDICATOR_ID, ICON_PATH, AppIndicator3.IndicatorCategory.SYSTEM_SERVICES)
@@ -45,6 +46,7 @@ def build_menu(debug=False):
     global memory_free
     global memory_used
     global memory_total
+    global actual_time
 
     menu = gtk.Menu()
 
@@ -62,6 +64,12 @@ def build_menu(debug=False):
     horizontal_separator1 = gtk.SeparatorMenuItem()
     menu.append(horizontal_separator1)
 
+    actual_time = gtk.MenuItem(label=time.strftime("%H:%M:%S"))
+    menu.append(actual_time)
+
+    horizontal_separator2 = gtk.SeparatorMenuItem()
+    menu.append(horizontal_separator2)
+
     item_repo = gtk.MenuItem(label='Repository')
     item_repo.connect('activate', open_repo_link)
     menu.append(item_repo)
@@ -70,8 +78,8 @@ def build_menu(debug=False):
     item_buy_me_a_coffe.connect('activate', buy_me_a_coffe)
     menu.append(item_buy_me_a_coffe)
 
-    horizontal_separator2 = gtk.SeparatorMenuItem()
-    menu.append(horizontal_separator2)
+    horizontal_separator3 = gtk.SeparatorMenuItem()
+    menu.append(horizontal_separator3)
 
     item_quit = gtk.MenuItem(label='Quit')
     item_quit.connect('activate', quit)
@@ -85,6 +93,7 @@ def update_menu(memory):
     memory_free.set_label(f"Free: {memory['free']:.2f} GB")
     memory_used.set_label(f"Used: {memory['used']:.2f} GB")
     memory_total.set_label(f"Total: {memory['total']:.2f} GB")
+    actual_time.set_label(time.strftime("%H:%M:%S"))
 
 def update_disk_info(indicator, debug=False):
     global image_to_show
