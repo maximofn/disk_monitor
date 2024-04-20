@@ -1,4 +1,4 @@
-# Cpu monitor
+# Disk monitor
 
 🖥️ Disk monitor for Ubuntu: The ultimate real-time disk tracking tool. Monitor your disk memory usage directly from your Ubuntu menu bar with Disk Monitor. This user-friendly and efficient application is fully integrated with the latest Ubuntu operating system. Get live updates and optimize your development tasks. Download now and take control of your disk today!
 
