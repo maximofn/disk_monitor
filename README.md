@@ -1,59 +1,69 @@
 # Disk monitor
 
-🖥️ Disk monitor for Ubuntu: The ultimate real-time disk tracking tool. Monitor your disk memory usage directly from your Ubuntu menu bar with Disk Monitor. This user-friendly and efficient application is fully integrated with the latest Ubuntu operating system. Get live updates and optimize your development tasks. Download now and take control of your disk today!
+Disk usage indicator for the Ubuntu/GNOME panel: live mount-by-mount usage with a per-mount donut and percentage. Daemon (`disk-monitord`) sits on `/proc/mounts` + `statvfs`, frontend (`disk-monitor-tray`) talks to it over HTTP/SSE.
 
 ![disk monitor](disk_monitor.gif)
 
-## About Disk Monitor
-Disk Monitor is an intuitive tool designed for developers and professionals who need to keep an eye on their disk memory usage in real time. It integrates seamlessly with the Ubuntu menu bar, providing essential information at your fingertips.
+The legacy Python script lives in `legacy/disk_monitor.py` and still works; the Rust rewrite below is the recommended path going forward (RSS ~10× lower, CPU ~100× lower).
 
-## Key Features
- * Real-time Monitoring: View disk memory usage, all updated live.
- * Optimized for Ubuntu: Crafted to integrate flawlessly with the latest Ubuntu OS.
+> **Sister monitors:** [gpu_monitor](https://github.com/maximofn/gpu_monitor), `cpu_monitor`, `ram_monitor`. Independent repos so you can install only the ones that match your hardware.
 
-## Installation
+## Architecture
 
-### Clone the repository
+Cargo workspace, three crates:
 
-```bash
-git clone https://github.com/maximofn/disk_monitor.git
+```
+crates/disk-monitor-core   →  shared serde types (Snapshot / Mount / Usage)
+crates/disk-monitord       →  HTTP+SSE daemon (binds 127.0.0.1:9126 by default)
+crates/disk-monitor-tray   →  Linux system-tray frontend (ksni + tiny-skia + freetype)
 ```
 
-or with `ssh`
+API: REST + Server-Sent Events, JSON payloads. See [`docs/api.md`](docs/api.md).
+
+## Build
 
 ```bash
-git clone git@github.com:maximofn/disk_monitor.git
+cargo build --release --workspace
 ```
 
-### Install the dependencies
-
-Make sure that you do not have any `venv` or `conda` environment installed.
+## Run (manual, for development)
 
 ```bash
-if [ -n "$VIRTUAL_ENV" ]; then
-    deactivate
-fi
-if command -v conda &>/dev/null; then
-    conda deactivate
-fi
+./target/release/disk-monitord                        # foreground daemon
+./target/release/disk-monitor-tray                    # tray icon (separate terminal)
 ```
 
-Now install the dependencies
+Daemon listens on `127.0.0.1:9126`. Override with `--bind`/`--port` or `DISK_MONITORD_BIND` / `DISK_MONITORD_PORT`.
+
+To verify with curl:
 
 ```bash
-sudo apt install lm-sensors
+curl http://127.0.0.1:9126/v1/snapshot | jq
+curl -N http://127.0.0.1:9126/v1/stream
 ```
 
-Select YES to all questions
+## Install
+
+Build, then copy binaries + assets + service files into your home tree:
 
 ```bash
-sudo sensors-detect
+cargo build --release --workspace
+
+mkdir -p ~/.local/bin ~/.local/share/disk-monitor ~/.config/systemd/user ~/.config/autostart
+install -m 0755 target/release/disk-monitord     ~/.local/bin/
+install -m 0755 target/release/disk-monitor-tray ~/.local/bin/
+install -m 0644 assets/disk.png                  ~/.local/share/disk-monitor/
+install -m 0644 packaging/systemd/disk-monitord.service ~/.config/systemd/user/
+install -m 0644 packaging/autostart/disk-monitor-tray.desktop ~/.config/autostart/
+
+systemctl --user daemon-reload
+systemctl --user enable --now disk-monitord
 ```
 
-Install psensor
+The tray autostarts on next login. To start it now without logging out:
 
 ```bash
-sudo apt install psensor
+nohup ~/.local/bin/disk-monitor-tray >/dev/null 2>&1 & disown
 ```
 
 Install python3-pip
@@ -71,13 +81,18 @@ pip3 install matplotlib
 ## Execution at start-up
 
 ```bash
-add_to_startup.sh
+cargo test --workspace
+cargo clippy --workspace -- -D warnings
+cargo fmt --all
+
+# Render the panel icon to a PNG and exit (no DBus, no GNOME):
+./target/release/disk-monitor-tray --backend-url http://127.0.0.1:9126 --dump-icon /tmp/icon.png
 ```
 
-Then when you restart your computer, the Disk Monitor will start automatically.
+`--mock` on the daemon serves a synthetic two-mount snapshot, useful in CI or on a machine where `/proc/mounts` is locked down.
 
 ## Support
 
-Consider giving a **☆ Star** to this repository, if you also want to invite me for a coffee, click on the following button
+If this is useful, give the repo a ★. If you want to buy me a coffee:
 
 [![BuyMeACoffee](https://img.shields.io/badge/Buy_Me_A_Coffee-support_my_work-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white&labelColor=101010)](https://www.buymeacoffee.com/maximofn)

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Disk Monitor Tray
+Comment=System tray indicator for disk usage (consumes disk-monitord)
+Exec=sh -c "exec $HOME/.local/bin/disk-monitor-tray"
+Icon=drive-harddisk
+Terminal=false
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Categories=System;Monitor;

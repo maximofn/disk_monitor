@@ -1,0 +1,19 @@
+[Unit]
+Description=Disk monitor backend (statvfs + /proc/mounts over HTTP/SSE)
+Documentation=https://github.com/maximofn/disk_monitor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/disk-monitord
+Restart=on-failure
+RestartSec=2s
+MemoryMax=64M
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target
