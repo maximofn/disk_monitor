@@ -66,19 +66,22 @@ The tray autostarts on next login. To start it now without logging out:
 nohup ~/.local/bin/disk-monitor-tray >/dev/null 2>&1 & disown
 ```
 
-Install python3-pip
+> The tray is a `.desktop` autostart, **not** a systemd service — it needs the
+> graphical session (DBus user bus + panel) to be up before it can plant its
+> icon. After rebuilding the tray binary, restart it with `pkill` + relaunch
+> (or just log out / log in); `systemctl --user restart disk-monitor-tray`
+> won't work because no such unit exists.
+
+### Legacy (Python)
+
+If you still want to run `legacy/disk_monitor.py` instead of the Rust path:
 
 ```bash
 sudo apt install python3-pip
+pip3 install psutil matplotlib
 ```
 
-Install matplotlib
-
-```bash
-pip3 install matplotlib
-```
-
-## Execution at start-up
+## Dev tips
 
 ```bash
 cargo test --workspace
