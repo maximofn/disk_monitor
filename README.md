@@ -10,12 +10,13 @@ The legacy Python script lives in `legacy/disk_monitor.py` and still works; the 
 
 ## Architecture
 
-Cargo workspace, three crates:
+Cargo workspace, three crates plus a Swift Package for the macOS frontend:
 
 ```
 crates/disk-monitor-core   →  shared serde types (Snapshot / Mount / Usage)
 crates/disk-monitord       →  HTTP+SSE daemon (binds 127.0.0.1:9126 by default)
 crates/disk-monitor-tray   →  Linux system-tray frontend (ksni + tiny-skia + freetype)
+front-mac/                 →  macOS menu bar frontend (Swift + AppKit)
 ```
 
 API: REST + Server-Sent Events, JSON payloads. See [`docs/api.md`](docs/api.md).
@@ -71,6 +72,32 @@ nohup ~/.local/bin/disk-monitor-tray >/dev/null 2>&1 & disown
 > icon. After rebuilding the tray binary, restart it with `pkill` + relaunch
 > (or just log out / log in); `systemctl --user restart disk-monitor-tray`
 > won't work because no such unit exists.
+
+## macOS frontend
+
+For consuming the same daemon from a Mac (menu bar app, no Dock icon):
+
+```bash
+cd front-mac
+./scripts/build-app.sh                       # produces build/Disk Monitor.app
+open 'build/Disk Monitor.app' --args --backend-url http://127.0.0.1:9126
+```
+
+If the daemon runs on a remote Linux host (the recommended setup — daemon
+bindeado a `127.0.0.1`, sin auth), keep an SSH tunnel alive at login:
+
+```bash
+# Edit the SSH host in the plist first (default: wallabot)
+sed -i '' 's/wallabot/<your-ssh-host>/' scripts/com.maximofn.disk-monitor-tunnel.plist
+./scripts/install-tunnel.sh                  # LaunchAgent: ssh -N -L 9126:127.0.0.1:9126
+./scripts/install-launchagent.sh             # LaunchAgent: Disk Monitor.app at login
+```
+
+Same renderer geometry as the Linux tray (per-mount donut + label + percent
+inside) but with Core Graphics + Core Text instead of tiny-skia + freetype.
+The Mac tray's mount submenu also exposes a "Rescan largest files" action
+that POSTs to `/v1/rescan/{mount}`. See [`front-mac/`](front-mac/) for
+details.
 
 ### Legacy (Python)
 
