@@ -121,6 +121,23 @@ cargo fmt --all
 
 `--mock` on the daemon serves a synthetic two-mount snapshot, useful in CI or on a machine where `/proc/mounts` is locked down.
 
+## Home Assistant integration
+
+Surface disk state as native HA sensors with no custom component — just a YAML package on top of `default_config`'s `rest` integration. Polls `/v1/snapshot` every 60 s (disk usage doesn't move second-by-second, and `largest_files` scans run on a background timer in the daemon) and exposes 18 entities: host metadata + 8 sensors per hardcoded mount (`/` and `/media/wallabot/seagate2T`) — device, fs_type, total/used/free in GiB, used %, largest file name + size. The `largest_file` sensor carries the full top-N list as `attributes.largest_files`.
+
+```bash
+# On the raspberry running Home Assistant:
+cd home-assistant/tunnel
+./install.sh                                 # generates dedicated SSH key, installs systemd user unit
+# (paste the printed pubkey line into the disk host's ~/.ssh/authorized_keys)
+
+# Copy the package and reload HA:
+cp ../packages/disk_monitor.yaml /config/packages/
+docker restart homeassistant
+```
+
+The dedicated key is restricted with `restrict,port-forwarding,permitopen="127.0.0.1:9126"`. Mount lookup is done with `selectattr` on `mount_point` (not by index), so the daemon's mount order doesn't matter. To add a new mount: copy a block and swap the slug; instructions in [`home-assistant/README.md`](home-assistant/README.md).
+
 ## Support
 
 If this is useful, give the repo a ★. If you want to buy me a coffee:

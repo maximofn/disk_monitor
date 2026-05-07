@@ -1,0 +1,196 @@
+# Disk Monitor — paquete Home Assistant
+#
+# Drop-in para `packages/disk_monitor.yaml`. Consume /v1/snapshot del daemon
+# `disk-monitord` (puerto 9126) y expone una entidad por métrica y mount.
+#
+# Hardcodea los dos mounts conocidos: `/` (root, ext4) y
+# `/media/wallabot/seagate2T`. Para añadir un mount nuevo, copia un bloque
+# entero, cambia el `mount_point` del selectattr y los `unique_id` de
+# `disk_<slug>_*`. selectattr robusto frente a reordenado: no asume índice
+# en el array.
+#
+# scan_interval: 60s — el uso de disco no cambia segundo a segundo y los
+# largest_files se refrescan en background mucho más despacio.
+
+rest:
+  - resource: http://127.0.0.1:9126/v1/snapshot
+    scan_interval: 60
+    timeout: 10
+    sensor:
+      # ---------- Datos de host ----------
+      - name: "Disk Monitor Host"
+        unique_id: disk_monitor_host
+        value_template: "{{ value_json.host }}"
+        icon: mdi:server
+
+      - name: "Disk Monitor Mount Count"
+        unique_id: disk_monitor_mount_count
+        value_template: "{{ value_json.mounts | length }}"
+        state_class: measurement
+        icon: mdi:counter
+
+      # ---------- Mount: / (root) ----------
+      - name: "Disk Root Device"
+        unique_id: disk_root_device
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {{ m.device if m else None }}
+        icon: mdi:harddisk
+
+      - name: "Disk Root Filesystem"
+        unique_id: disk_root_fs
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {{ m.fs_type if m else None }}
+        icon: mdi:file-tree
+
+      - name: "Disk Root Total"
+        unique_id: disk_root_total
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {% if m %}{{ (m.usage.total_bytes / 1073741824) | round(1) }}{% endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Root Used"
+        unique_id: disk_root_used
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {% if m %}{{ (m.usage.used_bytes / 1073741824) | round(1) }}{% endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Root Free"
+        unique_id: disk_root_free
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {% if m %}{{ (m.usage.free_bytes / 1073741824) | round(1) }}{% endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Root Used Percent"
+        unique_id: disk_root_used_percent
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {% if m and m.usage.total_bytes > 0 -%}
+          {{ (m.usage.used_bytes * 100 / m.usage.total_bytes) | round(1) }}
+          {%- endif %}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Root Largest File"
+        unique_id: disk_root_largest_file
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {% if m and m.largest_files | length > 0 -%}
+          {{ (m.largest_files | first).path | regex_replace('^.*/', '') }}
+          {%- else -%}
+          none
+          {%- endif %}
+        json_attributes_path: "$.mounts[?(@.mount_point=='/')]"
+        json_attributes:
+          - largest_files
+          - largest_files_scanned_at
+        icon: mdi:file-document-outline
+
+      - name: "Disk Root Largest File Size"
+        unique_id: disk_root_largest_file_size
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+          {% if m and m.largest_files | length > 0 -%}
+          {{ ((m.largest_files | first).size_bytes / 1073741824) | round(2) }}
+          {%- endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:file-document-outline
+
+      # ---------- Mount: /media/wallabot/seagate2T ----------
+      - name: "Disk Seagate2T Device"
+        unique_id: disk_seagate2t_device
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {{ m.device if m else None }}
+        icon: mdi:harddisk
+
+      - name: "Disk Seagate2T Filesystem"
+        unique_id: disk_seagate2t_fs
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {{ m.fs_type if m else None }}
+        icon: mdi:file-tree
+
+      - name: "Disk Seagate2T Total"
+        unique_id: disk_seagate2t_total
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {% if m %}{{ (m.usage.total_bytes / 1073741824) | round(1) }}{% endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Seagate2T Used"
+        unique_id: disk_seagate2t_used
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {% if m %}{{ (m.usage.used_bytes / 1073741824) | round(1) }}{% endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Seagate2T Free"
+        unique_id: disk_seagate2t_free
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {% if m %}{{ (m.usage.free_bytes / 1073741824) | round(1) }}{% endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Seagate2T Used Percent"
+        unique_id: disk_seagate2t_used_percent
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {% if m and m.usage.total_bytes > 0 -%}
+          {{ (m.usage.used_bytes * 100 / m.usage.total_bytes) | round(1) }}
+          {%- endif %}
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:harddisk
+
+      - name: "Disk Seagate2T Largest File"
+        unique_id: disk_seagate2t_largest_file
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {% if m and m.largest_files | length > 0 -%}
+          {{ (m.largest_files | first).path | regex_replace('^.*/', '') }}
+          {%- else -%}
+          none
+          {%- endif %}
+        json_attributes_path: "$.mounts[?(@.mount_point=='/media/wallabot/seagate2T')]"
+        json_attributes:
+          - largest_files
+          - largest_files_scanned_at
+        icon: mdi:file-document-outline
+
+      - name: "Disk Seagate2T Largest File Size"
+        unique_id: disk_seagate2t_largest_file_size
+        value_template: >-
+          {% set m = value_json.mounts | selectattr('mount_point', 'eq', '/media/wallabot/seagate2T') | first | default(none) %}
+          {% if m and m.largest_files | length > 0 -%}
+          {{ ((m.largest_files | first).size_bytes / 1073741824) | round(2) }}
+          {%- endif %}
+        unit_of_measurement: "GiB"
+        device_class: data_size
+        state_class: measurement
+        icon: mdi:file-document-outline

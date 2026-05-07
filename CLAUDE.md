@@ -144,6 +144,28 @@ Layout per-mount (con `icon_height = 22` px):
 
 **Único umbral**: porcentaje de uso del filesystem (no hay otra métrica como temperatura del GPU). Por eso label y número del centro van neutros — el wedge del donut ya hace el code de color. Si pintas el número en rojo cuando el disco está al 95%, encima de un anillo ya rojo, queda redundante y ruidoso.
 
+## Home Assistant (`home-assistant/`)
+
+Integración declarativa con HA usando el componente `rest` de `default_config`. 18 sensores: host/mount_count + 8 por mount hardcodeado (`/` y `/media/wallabot/seagate2T`).
+
+**Topología**: túnel SSH forward desde raspihome (always-on) al host con disco, puerto 9126. Pubkey en wallabot con `restrict,port-forwarding,permitopen="127.0.0.1:9126"`.
+
+**`scan_interval: 60s`** (no 15s como CPU/GPU/RAM). El uso de disco no cambia segundo a segundo y los `largest_files` se refrescan en background mucho más despacio. History-graphs en el dashboard a 72 horas (no 6h) por la misma razón — el disco evoluciona en escala de días.
+
+**Mount lookup por `selectattr`, no por índice**:
+
+```yaml
+{% set m = value_json.mounts | selectattr('mount_point', 'eq', '/') | first | default(none) %}
+```
+
+El orden del array `mounts[]` que devuelve el daemon no está garantizado entre samples (depende del orden en `/proc/mounts` que puede cambiar tras un remount). `mounts[0]` sería frágil; `selectattr` es robusto. Para añadir un mount nuevo, copia el bloque entero y cambia el `mount_point` del filtro y los `unique_id`.
+
+**`largest_files` como atributo**, no entidades separadas. Top-N (típicamente 20) archivos con `path` + `size_bytes` van en `attributes.largest_files` del sensor `disk_<slug>_largest_file`. Visible en developer-tools y consumible desde plantillas / scripts. Crear N entidades por archivo inflaría el registro y haría las gráficas de "top-1" inmanejables cuando el archivo más grande cambia entre scans.
+
+**`POST /v1/rescan/{mount}` no expuesto en el package**. El componente `rest` de HA es solo GET. Para disparar rescans desde HA hay que definir `rest_command:` aparte (documentado en `home-assistant/README.md`). La mayoría de usos no lo necesitan — el daemon hace coalesce y los scans se programan solos cada N horas.
+
+**Schema replication**: si añades un campo a `Mount` / `Usage` / `FileEntry` en `disk-monitor-core`, replícalo en `home-assistant/packages/disk_monitor.yaml` como nuevo `value_template`.
+
 ## Convenciones del repo
 
 - **API versioning** por prefijo de path (`/v1/...`). Romper compat = subir a `/v2/`. `disk_monitor_core::API_VERSION` es la fuente de verdad.

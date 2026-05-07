@@ -1,0 +1,22 @@
+[Unit]
+Description=SSH forward tunnel to Disk host (Home Assistant access to disk-monitord)
+Documentation=file:///%h/projects/disk_monitor/home-assistant/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ssh -N -T \
+    -i %h/.ssh/id_ed25519_disk_tunnel \
+    -o IdentitiesOnly=yes \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=3 \
+    -o ExitOnForwardFailure=yes \
+    -o StrictHostKeyChecking=accept-new \
+    -L 127.0.0.1:9126:127.0.0.1:9126 \
+    wallabot@wallabot
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
