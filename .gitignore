@@ -167,6 +167,11 @@ target/
 *.rs.bk
 Cargo.lock.bak
 
+# Swift Package Manager (front-mac)
+.build/
+.swiftpm/
+front-mac/build/
+
 # Debug previews of the rendered tray icon (regenerated on demand)
 docs/preview/
 
